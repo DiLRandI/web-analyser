@@ -1,0 +1,27 @@
+{
+    "go.lintTool": "golangci-lint",
+    "go.lintOnSave": "workspace",
+    "go.lintFlags": [
+        "--fast"
+    ],
+    "editor.useTabStops": true,
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+    "editor.rulers": [
+        {
+            "column": 100,
+            "color": "#9ca500"
+        },
+        {
+            "column": 120,
+            "color": "#ca0000"
+        },
+    ],
+    "fileHeaderComment.parameter": {
+        "*": {
+            "commentbegin": "// ",
+            "commentprefix": "// ",
+            "commentend": "// ",
+        }
+    }
+}
