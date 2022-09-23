@@ -7,24 +7,24 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type handler struct {
+type analysisHandler struct {
 }
 
-func New() *handler {
-	return &handler{}
+func New() *analysisHandler {
+	return &analysisHandler{}
 }
 
-func (h *handler) RegisterRoutes(router *gin.Engine) {
+func (h *analysisHandler) RegisterRoutes(router *gin.Engine) {
 	router.POST("/analyse", h.analyse)
 	router.GET("/analyse", h.getAnalysis)
 }
 
-func (h *handler) analyse(c *gin.Context) {
+func (h *analysisHandler) analyse(c *gin.Context) {
 	log.Infof("Starting analysis for the URL %s", "test")
 	c.JSON(http.StatusNoContent, nil)
 }
 
-func (h *handler) getAnalysis(c *gin.Context) {
+func (h *analysisHandler) getAnalysis(c *gin.Context) {
 	log.Infof("Retrieving analysed report")
 	c.JSON(http.StatusNoContent, nil)
 }
