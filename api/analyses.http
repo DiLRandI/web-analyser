@@ -1,0 +1,6 @@
+POST http://localhost:8080/analyse
+Accept: application/json
+
+{
+    "webUrl":"http://www.amazon.com"
+}
