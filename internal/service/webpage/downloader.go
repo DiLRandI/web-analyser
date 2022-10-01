@@ -1,9 +1,8 @@
-package service
+package webpage
 
 import (
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/DiLRandI/web-analyser/internal/service/webpage/model"
 	"github.com/sirupsen/logrus"
@@ -13,10 +12,10 @@ type Downloader interface {
 }
 
 type downloader struct {
-	client *http.Client
+	client WebClient
 }
 
-func NewDownloader(client *http.Client) Downloader {
+func NewDownloader(client WebClient) Downloader {
 	return &downloader{
 		client: client,
 	}

@@ -1,8 +1,12 @@
-package service
+package webpage
 
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
+	"io"
+	"strings"
 
 	"github.com/DiLRandI/web-analyser/internal/service/webpage/model"
 	"golang.org/x/net/html"
@@ -19,26 +23,58 @@ func NewAnalyser() Analyser {
 }
 
 func (s *analyser) AnalysePage(ctx context.Context, page *model.DownloadedWebpage) (*model.Analysis, error) {
-	_, err := html.Parse(bytes.NewReader(page.Content))
-	if err != nil {
-		return nil, err
+
+	return nil, nil
+}
+
+func (s *analyser) pageVersion(ctx context.Context, content []byte) (string, error) {
+	tt := html.NewTokenizer(bytes.NewReader(content))
+	docType := ""
+loop:
+	for {
+		token := tt.Next()
+		switch token {
+		case html.ErrorToken:
+			err := tt.Err()
+			if errors.Is(err, io.EOF) {
+				return "", fmt.Errorf("!Doctype node is not found in the document")
+			}
+
+			return "", fmt.Errorf("Unable to process the document, %v", err)
+
+		case html.DoctypeToken:
+			docType = string(tt.Text())
+			break loop
+		}
 	}
 
-	return nil, nil
+	//html5
+	if docType == "html" {
+		return "HTML5 and beyond", nil
+	}
+
+	// old / other doc types
+	dts := strings.Split(docType, "-//")
+	if len(dts) != 2 {
+		return "", fmt.Errorf("Unable to parse the Doctype node %q", docType)
+	}
+
+	dts = strings.Split(dts[1], "//")
+	if len(dts) > 2 {
+		return dts[1], nil
+	}
+
+	return "", fmt.Errorf("Unable to parse the Doctype node %q", docType)
 }
 
-func (s *analyser) pageVersion(ctx context.Context) (string, error) {
+func (s *analyser) pageTitle(ctx context.Context, node *html.Node) (string, error) {
 	return "", nil
 }
 
-func (s *analyser) pageTitle(ctx context.Context) (string, error) {
-	return "", nil
-}
-
-func (s *analyser) linksDetail(ctx context.Context) (any, error) {
+func (s *analyser) linksDetail(ctx context.Context, node *html.Node) (any, error) {
 	return nil, nil
 }
 
-func (s *analyser) hasLoginForm(ctx context.Context) (bool, error) {
+func (s *analyser) hasLoginForm(ctx context.Context, node *html.Node) (bool, error) {
 	return false, nil
 }
