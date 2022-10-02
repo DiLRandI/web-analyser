@@ -111,6 +111,48 @@ loop:
 	return title, nil
 }
 
+func (s *analyser) headingDetails(ctx context.Context, content []byte) (map[string]int, error) {
+	headings := map[string]int{
+		"h1": 0,
+		"h2": 0,
+		"h3": 0,
+		"h4": 0,
+		"h5": 0,
+		"h6": 0,
+	}
+
+	tt := html.NewTokenizer(bytes.NewReader(content))
+	for {
+		token := tt.Next()
+		switch token {
+		case html.ErrorToken:
+			err := tt.Err()
+			if errors.Is(err, io.EOF) {
+				return headings, nil
+			}
+
+			return nil, fmt.Errorf("unable to process the document, %v", err)
+
+		case html.StartTagToken:
+			name, _ := tt.TagName()
+			switch string(name) {
+			case "h1":
+				headings["h1"]++
+			case "h2":
+				headings["h2"]++
+			case "h3":
+				headings["h3"]++
+			case "h4":
+				headings["h4"]++
+			case "h5":
+				headings["h5"]++
+			case "h6":
+				headings["h6"]++
+			}
+		}
+	}
+}
+
 func (s *analyser) linksDetail(ctx context.Context, node *html.Node) (any, error) {
 	return nil, nil
 }
