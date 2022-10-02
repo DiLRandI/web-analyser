@@ -30,8 +30,61 @@ func NewAnalyser(client WebClient) Analyser {
 }
 
 func (s *analyser) AnalysePage(ctx context.Context, page *model.DownloadedWebpage) (*model.Analysis, error) {
+	analysis := &model.Analysis{}
+	if page.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("download page status indicate not success status, %d", page.StatusCode)
+	}
 
-	return nil, nil
+	if page.Content == nil {
+		return nil, fmt.Errorf("page content not found")
+	}
+	analysis.Page = page
+
+	version, err := s.pageVersion(ctx, page.Content)
+	if err != nil {
+		logrus.Warn(err)
+	}
+	analysis.PageVersion = version
+
+	title, err := s.pageTitle(ctx, page.Content)
+	if err != nil {
+		logrus.Warn(err)
+	}
+	analysis.Title = title
+
+	headingDetails, err := s.headingDetails(ctx, page.Content)
+	if err != nil {
+		logrus.Warn(err)
+	}
+	analysis.Headings = headingDetails
+
+	hasLoginForm, err := s.hasLoginForm(ctx, page.Content)
+	if err != nil {
+		logrus.Warn(err)
+	}
+	analysis.HasLoginForm = hasLoginForm
+
+	links, err := s.linksDetail(ctx, page.Url, page.Content)
+	if err != nil {
+		logrus.Warn(err)
+	}
+	analysis.Links = links
+
+	for _, l := range links {
+		if l.IsInternal {
+			analysis.InternalLinkCount++
+		} else {
+			analysis.ExternalLinkCount++
+		}
+
+		if l.LinkStatus == model.LinkStatusActive {
+			analysis.ActiveLinkCount++
+		} else {
+			analysis.InactiveLinkCount++
+		}
+	}
+
+	return analysis, nil
 }
 
 func (s *analyser) pageVersion(ctx context.Context, content []byte) (string, error) {
