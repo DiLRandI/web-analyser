@@ -3,17 +3,16 @@ package mem
 import (
 	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 
+	"github.com/DiLRandI/web-analyser/internal/dao"
 	"github.com/DiLRandI/web-analyser/internal/repository"
 )
 
-var data map[int64]any = make(map[int64]any)
+var data map[int64]*dao.Analyses = make(map[int64]*dao.Analyses)
 var currentId int64 = 0
 
 type resultInMem struct {
-	lock sync.Mutex
 }
 
 func NewResultInMemory() repository.Results {
@@ -24,17 +23,13 @@ func nextId() int64 {
 	return atomic.AddInt64(&currentId, 1)
 }
 
-func (r *resultInMem) Save(ctx context.Context, m any) (int64, error) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+func (r *resultInMem) Save(ctx context.Context, m *dao.Analyses) (int64, error) {
 	id := nextId()
 	data[id] = m
 	return id, nil
 }
 
 func (r *resultInMem) Remove(ctx context.Context, id int64) error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
 	if _, ok := data[id]; !ok {
 		return fmt.Errorf("Unable to remove the item with id %d, item not found", id)
 	}
@@ -43,9 +38,7 @@ func (r *resultInMem) Remove(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *resultInMem) Get(ctx context.Context, id int64) (any, error) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+func (r *resultInMem) Get(ctx context.Context, id int64) (*dao.Analyses, error) {
 	if _, ok := data[id]; !ok {
 		return nil, fmt.Errorf("Unable to get the item with id %d, item not found", id)
 	}
@@ -53,10 +46,8 @@ func (r *resultInMem) Get(ctx context.Context, id int64) (any, error) {
 	return data[id], nil
 }
 
-func (r *resultInMem) GetAll(ctx context.Context) ([]any, error) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	results := []any{}
+func (r *resultInMem) GetAll(ctx context.Context) ([]*dao.Analyses, error) {
+	results := []*dao.Analyses{}
 
 	for _, d := range data {
 		results = append(results, d)

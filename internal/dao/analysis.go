@@ -3,8 +3,16 @@ package dao
 import "time"
 
 type Analyses struct {
-	Id        int
-	Url       string
-	Requested time.Time
-	Completed *time.Time
+	Id                int
+	Url               string
+	Requested         time.Time
+	Completed         *time.Time
+	Title             string
+	Headings          map[string]int
+	InternalLinkCount int
+	ExternalLinkCount int
+	ActiveLinkCount   int
+	InactiveLinkCount int
+	PageVersion       string
+	HasLoginForm      bool
 }

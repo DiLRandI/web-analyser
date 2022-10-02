@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/DiLRandI/web-analyser/internal/dao"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +14,7 @@ func Test_save_should_add_item_to_map(t *testing.T) {
 	sut := NewResultInMemory()
 	assert.Empty(t, data)
 
-	id, err := sut.Save(context.Background(), "Test data")
+	id, err := sut.Save(context.Background(), &dao.Analyses{})
 
 	assert.NoError(t, err)
 	assert.Greater(t, id, int64(0))
@@ -29,7 +30,7 @@ func Test_save_should_persis_two_consecutive_items(t *testing.T) {
 	sut := NewResultInMemory()
 	assert.Empty(t, data)
 
-	id1, err1 := sut.Save(context.Background(), "Test data")
+	id1, err1 := sut.Save(context.Background(), &dao.Analyses{})
 
 	assert.NoError(t, err1)
 	assert.Greater(t, id1, int64(0))
@@ -39,7 +40,7 @@ func Test_save_should_persis_two_consecutive_items(t *testing.T) {
 	_, ok1 := data[id1]
 	assert.True(t, ok1)
 
-	id2, err2 := sut.Save(context.Background(), "Test data")
+	id2, err2 := sut.Save(context.Background(), &dao.Analyses{})
 
 	assert.NoError(t, err2)
 	assert.Greater(t, id2, int64(1))
@@ -53,7 +54,7 @@ func Test_save_should_persis_two_consecutive_items(t *testing.T) {
 
 func Test_remove_should_remove_the_item_from_map(t *testing.T) {
 	t.Cleanup(cleanup)
-	data[1] = "Test data"
+	data[1] = &dao.Analyses{}
 	currentId = 1
 	sut := NewResultInMemory()
 	assert.NotEmpty(t, data)
@@ -66,7 +67,7 @@ func Test_remove_should_remove_the_item_from_map(t *testing.T) {
 
 func Test_remove_should_remove_throw_an_error_for_invalid_id(t *testing.T) {
 	t.Cleanup(cleanup)
-	data[1] = "Test data"
+	data[1] = &dao.Analyses{}
 	currentId = 1
 
 	sut := NewResultInMemory()
@@ -79,7 +80,7 @@ func Test_remove_should_remove_throw_an_error_for_invalid_id(t *testing.T) {
 
 func Test_get_should_return_item_on_map(t *testing.T) {
 	t.Cleanup(cleanup)
-	s := "Test data"
+	s := &dao.Analyses{}
 	data[1] = s
 	currentId = 1
 
@@ -88,12 +89,12 @@ func Test_get_should_return_item_on_map(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Contains(t, result, s)
+	assert.Equal(t, result, s)
 }
 
 func Test_get_should_throw_an_error_for_invalid_id(t *testing.T) {
 	t.Cleanup(cleanup)
-	s := "Test data"
+	s := &dao.Analyses{}
 	data[1] = s
 	currentId = 1
 
@@ -108,9 +109,9 @@ func Test_get_should_throw_an_error_for_invalid_id(t *testing.T) {
 
 func Test_get_all_return_all_the_items_in_map(t *testing.T) {
 	t.Cleanup(cleanup)
-	data[1] = "Test data 1"
-	data[2] = "Test data 2"
-	data[3] = "Test data 3"
+	data[1] = &dao.Analyses{}
+	data[2] = &dao.Analyses{}
+	data[3] = &dao.Analyses{}
 	currentId = 3
 
 	sut := NewResultInMemory()
