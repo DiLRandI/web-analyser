@@ -157,6 +157,98 @@ func (s *analyser) linksDetail(ctx context.Context, node *html.Node) (any, error
 	return nil, nil
 }
 
-func (s *analyser) hasLoginForm(ctx context.Context, node *html.Node) (bool, error) {
-	return false, nil
+// hasLoginForm to detect login form first check to see if there is a <form> element,
+// if <form> element found then it will check for <input type="password"> to make sure
+// that the password is asked, finally check for either <button type="submit">Login</button> or
+// <input type="submit" value="Login">
+// Limitation only check for "Login" text to make it simpler,
+func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, error) {
+	insideForm := false
+	hasPasswordInput := false
+	hasLoginButton := false
+	possibleLoginButton := false
+
+	tt := html.NewTokenizer(bytes.NewReader(content))
+	for {
+		token := tt.Next()
+		switch token {
+		case html.ErrorToken:
+			err := tt.Err()
+			if errors.Is(err, io.EOF) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("unable to process the document, %v", err)
+
+		case html.StartTagToken:
+			name, hasAttr := tt.TagName()
+			if string(name) == "form" {
+				insideForm = true
+				continue
+			} else if insideForm && string(name) == "input" && hasAttr {
+				isSubmit := false
+				isLogin := false
+				for {
+					k, v, m := tt.TagAttr()
+					sk := string(k)
+					sv := string(v)
+
+					if sk == "type" && sv == "password" {
+						hasPasswordInput = true
+						break
+					}
+
+					if sk == "type" && sv == "submit" {
+						isSubmit = true
+					}
+
+					if sk == "value" && sv == "Login" {
+						isLogin = true
+					}
+
+					if !m {
+						break
+					}
+				}
+
+				hasLoginButton = isSubmit && isLogin
+			} else if insideForm && string(name) == "button" && hasAttr {
+				// can be possible login button
+				for {
+					k, v, m := tt.TagAttr()
+					sk := string(k)
+					sv := string(v)
+
+					if sk == "type" && sv == "submit" {
+						possibleLoginButton = true
+						break
+					}
+
+					if !m {
+						break
+					}
+				}
+
+			}
+		case html.EndTagToken:
+			name, _ := tt.TagName()
+			if string(name) == "form" {
+				// is closing form is a login form ?
+				if hasLoginButton && hasPasswordInput {
+					return true, nil
+				}
+
+				insideForm = false
+				hasPasswordInput = false
+				hasLoginButton = false
+				possibleLoginButton = false
+			} else if string(name) == "button" {
+				possibleLoginButton = false
+			}
+		case html.TextToken:
+			if possibleLoginButton && !hasLoginButton {
+				hasLoginButton = string(tt.Text()) == "Login"
+			}
+		}
+	}
 }

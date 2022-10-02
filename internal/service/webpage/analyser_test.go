@@ -188,3 +188,113 @@ func Test_page_heading_count_should_return_valid_heading_count_for_each_heading(
 	assert.NoError(t, err)
 	assert.EqualValues(t, headings, expected)
 }
+
+func Test_login_form(t *testing.T) {
+	testCases := []struct {
+		desc   string
+		expErr error
+		expRes bool
+		input  string
+	}{
+		{
+			desc:   "hasLoginForm should return false if no login form found",
+			expErr: nil,
+			expRes: false,
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>no login form</title>
+			</head>
+			
+			<body>
+			<form>
+			</body>
+			
+			</html>`,
+		},
+		{
+			desc: `hasLoginForm should return true if login from found with <input type="submit"` +
+				` value="Login">`,
+			expErr: nil,
+			expRes: true,
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>login form</title>
+			</head>
+			
+			<body>
+				<form action="test">
+					<input type="text">
+					<input type="password">
+					<input type="submit" value="Login">
+				</form>
+			</body>
+			
+			</html>`,
+		},
+		{
+			desc: `hasLoginForm should return true if login from found with ` +
+				` <button type="submit">Login</button>`,
+			expErr: nil,
+			expRes: true,
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>login form</title>
+			</head>
+			
+			<body>
+				<form action="test">
+					<input type="text">
+					<input type="password">
+					<button type="submit">Login</button>
+				</form>
+			</body>
+			
+			</html>`,
+		},
+		{
+			desc:   `hasLoginForm should return false if the form is not a login form`,
+			expErr: nil,
+			expRes: false,
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<title>Document</title>
+			</head>
+			<body>
+				<form action="/singup">
+					<button type="reset">X</button>
+					<label for="Name">Name</label>
+					<input type="text">
+					<label for="Password">Password</label>
+					<input type="password" name="password" id="password">
+					<label for="Confirm password">Confirm password</label>
+					<input type="password" name="confirmPassword" id="confirmPassword">
+					<input type="submit" value="SignUp">
+				</form>
+			</body>
+			</html>`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			sut := &analyser{}
+			actRes, actErr := sut.hasLoginForm(context.Background(), []byte(tc.input))
+
+			if tc.expErr == nil {
+				assert.NoError(t, actErr)
+			} else {
+				assert.ErrorIs(t, actErr, tc.expErr)
+			}
+
+			assert.Equal(t, tc.expRes, actRes)
+
+		})
+	}
+}
