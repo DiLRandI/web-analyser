@@ -138,3 +138,53 @@ func Test_page_title_returns_error_if_head_element_is_missing_in_the_document(t 
 	assert.Empty(t, title)
 	assert.ErrorContains(t, err, "head element not found in the document")
 }
+
+func Test_page_heading_count_should_return_valid_heading_count(t *testing.T) {
+	sut := &analyser{}
+	content := `
+	<html lang="en">
+	<body>
+	</body>
+	</html>`
+	expected := map[string]int{
+		"h1": 0,
+		"h2": 0,
+		"h3": 0,
+		"h4": 0,
+		"h5": 0,
+		"h6": 0,
+	}
+	headings, err := sut.headingDetails(context.Background(), []byte(content))
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, headings, expected)
+}
+
+func Test_page_heading_count_should_return_valid_heading_count_for_each_heading(t *testing.T) {
+	sut := &analyser{}
+	content := `
+	<html lang="en">
+
+<body>
+    <h1>This is a h1</h1>
+    <h2>This is a h2</h2>
+    <h3>This is a h3</h3>
+    <h4>This is a h4</h4>
+    <h5>This is a h5</h5>
+    <h6>This is a h6</h6>
+</body>
+
+</html>`
+	expected := map[string]int{
+		"h1": 1,
+		"h2": 1,
+		"h3": 1,
+		"h4": 1,
+		"h5": 1,
+		"h6": 1,
+	}
+	headings, err := sut.headingDetails(context.Background(), []byte(content))
+
+	assert.NoError(t, err)
+	assert.EqualValues(t, headings, expected)
+}
