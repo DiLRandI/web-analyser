@@ -8,6 +8,16 @@ type DownloadedWebpage struct {
 }
 
 type Analysis struct {
+	Page              *DownloadedWebpage
+	Links             []*Link
+	Title             string
+	Headings          map[string]int
+	InternalLinkCount int
+	ExternalLinkCount int
+	ActiveLinkCount   int
+	InactiveLinkCount int
+	PageVersion       string
+	HasLoginForm      bool
 }
 
 type LinkStatus string
@@ -18,10 +28,9 @@ var (
 )
 
 type Link struct {
-	Name       string
-	Url        string
-	IsInternal bool
-	LinkStatus LinkStatus
-	//HttpStatusCode for inactive links only
+	Name           string
+	Url            string
+	IsInternal     bool
+	LinkStatus     LinkStatus
 	HttpStatusCode int
 }
