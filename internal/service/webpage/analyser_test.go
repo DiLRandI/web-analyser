@@ -2,10 +2,15 @@ package webpage
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 
+	"github.com/DiLRandI/web-analyser/internal/service/webpage/model"
+	mc "github.com/DiLRandI/web-analyser/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func Test_page_version_for_html5(t *testing.T) {
@@ -295,6 +300,325 @@ func Test_login_form(t *testing.T) {
 
 			assert.Equal(t, tc.expRes, actRes)
 
+		})
+	}
+}
+
+func Test_link_details(t *testing.T) {
+	testCases := []struct {
+		desc       string
+		hostUrl    string
+		input      string
+		expErr     error
+		expRes     []*model.Link
+		mockClient []struct {
+			getUrl string
+			res    *http.Response
+			err    error
+		}
+	}{
+		{
+			desc:    "Should return empty array if no links found",
+			hostUrl: "http://www.test.com",
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>Document</title>
+			</head>
+			
+			<body>
+			</body>
+			
+			</html>`,
+			expErr: nil,
+			expRes: make([]*model.Link, 0),
+		},
+		{
+			desc:    "Should return valid link object with internal true for fragment link",
+			hostUrl: "http://www.test.com",
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>Document</title>
+			</head>
+			
+			<body>
+			</body>
+				<a href="#id-test">Go to test</a>
+			</html>`,
+			expErr: nil,
+			expRes: []*model.Link{
+				{
+					Name:           "Go to test",
+					Url:            "#id-test",
+					IsInternal:     true,
+					LinkStatus:     model.LinkStatusActive,
+					HttpStatusCode: http.StatusOK,
+				},
+			},
+			mockClient: []struct {
+				getUrl string
+				res    *http.Response
+				err    error
+			}{
+				{
+					getUrl: "http://www.test.com/#id-test",
+					res: &http.Response{
+						StatusCode: http.StatusOK,
+					},
+					err: nil,
+				},
+			},
+		},
+		{
+			desc:    "Should return valid link object with internal true for path link",
+			hostUrl: "http://www.test.com",
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>Document</title>
+			</head>
+			
+			<body>
+			</body>
+				<a href="/test">Go to test</a>
+			</html>`,
+			expErr: nil,
+			expRes: []*model.Link{
+				{
+					Name:           "Go to test",
+					Url:            "/test",
+					IsInternal:     true,
+					LinkStatus:     model.LinkStatusActive,
+					HttpStatusCode: http.StatusOK,
+				},
+			},
+			mockClient: []struct {
+				getUrl string
+				res    *http.Response
+				err    error
+			}{
+				{
+					getUrl: mock.Anything,
+					res: &http.Response{
+						StatusCode: http.StatusOK,
+					},
+					err: nil,
+				},
+			},
+		},
+		{
+			desc:    "Should return valid link object with internal true for full path link",
+			hostUrl: "http://www.test.com",
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>Document</title>
+			</head>
+			
+			<body>
+			</body>
+				<a href="http://www.test.com/test">Go to test</a>
+			</html>`,
+			expErr: nil,
+			expRes: []*model.Link{
+				{
+					Name:           "Go to test",
+					Url:            "http://www.test.com/test",
+					IsInternal:     true,
+					LinkStatus:     model.LinkStatusActive,
+					HttpStatusCode: http.StatusOK,
+				},
+			},
+			mockClient: []struct {
+				getUrl string
+				res    *http.Response
+				err    error
+			}{
+				{
+					getUrl: mock.Anything,
+					res: &http.Response{
+						StatusCode: http.StatusOK,
+					},
+					err: nil,
+				},
+			},
+		},
+		{
+			desc:    "Should return valid link object with internal false for external link",
+			hostUrl: "http://www.test.com",
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>Document</title>
+			</head>
+			
+			<body>
+			</body>
+				<a href="http://www.different-test.com/test">Go to test</a>
+			</html>`,
+			expErr: nil,
+			expRes: []*model.Link{
+				{
+					Name:           "Go to test",
+					Url:            "http://www.different-test.com/test",
+					IsInternal:     false,
+					LinkStatus:     model.LinkStatusActive,
+					HttpStatusCode: http.StatusOK,
+				},
+			},
+			mockClient: []struct {
+				getUrl string
+				res    *http.Response
+				err    error
+			}{
+				{
+					getUrl: mock.Anything,
+					res: &http.Response{
+						StatusCode: http.StatusOK,
+					},
+					err: nil,
+				},
+			},
+		},
+		{
+			desc:    "Should return valid link object with internal false for external link",
+			hostUrl: "http://www.test.com",
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>Document</title>
+			</head>
+			
+			<body>
+			</body>
+				<a href="http://www.different-test.com/test">Go to test</a>
+			</html>`,
+			expErr: nil,
+			expRes: []*model.Link{
+				{
+					Name:           "Go to test",
+					Url:            "http://www.different-test.com/test",
+					IsInternal:     false,
+					LinkStatus:     model.LinkStatusActive,
+					HttpStatusCode: http.StatusOK,
+				},
+			},
+			mockClient: []struct {
+				getUrl string
+				res    *http.Response
+				err    error
+			}{
+				{
+					getUrl: mock.Anything,
+					res: &http.Response{
+						StatusCode: http.StatusOK,
+					},
+					err: nil,
+				},
+			},
+		},
+		{
+			desc:    "Should return link status inactive for not found url with correct status code",
+			hostUrl: "http://www.test.com",
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>Document</title>
+			</head>
+			
+			<body>
+			</body>
+				<a href="http://www.different-test.com/test">Go to test</a>
+			</html>`,
+			expErr: nil,
+			expRes: []*model.Link{
+				{
+					Name:           "Go to test",
+					Url:            "http://www.different-test.com/test",
+					IsInternal:     false,
+					LinkStatus:     model.LinkStatusInactive,
+					HttpStatusCode: http.StatusNotFound,
+				},
+			},
+			mockClient: []struct {
+				getUrl string
+				res    *http.Response
+				err    error
+			}{
+				{
+					getUrl: mock.Anything,
+					res: &http.Response{
+						StatusCode: http.StatusNotFound,
+					},
+					err: nil,
+				},
+			},
+		},
+		{
+			desc:    "Should return link status inactive with -1 status if request failed",
+			hostUrl: "http://www.test.com",
+			input: `<!DOCTYPE html>
+			<html lang="en">
+			
+			<head>
+				<title>Document</title>
+			</head>
+			
+			<body>
+			</body>
+				<a href="http://www.different-test.com/test">Go to test</a>
+			</html>`,
+			expErr: nil,
+			expRes: []*model.Link{
+				{
+					Name:           "Go to test",
+					Url:            "http://www.different-test.com/test",
+					IsInternal:     false,
+					LinkStatus:     model.LinkStatusInactive,
+					HttpStatusCode: -1,
+				},
+			},
+			mockClient: []struct {
+				getUrl string
+				res    *http.Response
+				err    error
+			}{
+				{
+					getUrl: mock.Anything,
+					res:    nil,
+					err:    errors.New("Test failure"),
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			mc := new(mc.WebClientMock)
+			for _, v := range tc.mockClient {
+				mc.On("Get", v.getUrl).Return(v.res, v.err)
+			}
+
+			sut := &analyser{
+				client: mc,
+			}
+
+			actRes, actErr := sut.linksDetail(context.Background(), tc.hostUrl, []byte(tc.input))
+
+			if tc.expErr == nil {
+				assert.NoError(t, actErr)
+			} else {
+				assert.ErrorIs(t, actErr, tc.expErr)
+			}
+
+			assert.Equal(t, tc.expRes, actRes)
 		})
 	}
 }

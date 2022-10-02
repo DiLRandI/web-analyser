@@ -6,9 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/DiLRandI/web-analyser/internal/service/webpage/model"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 )
 
@@ -16,10 +20,13 @@ type Analyser interface {
 }
 
 type analyser struct {
+	client WebClient
 }
 
-func NewAnalyser() Analyser {
-	return &analyser{}
+func NewAnalyser(client WebClient) Analyser {
+	return &analyser{
+		client: client,
+	}
 }
 
 func (s *analyser) AnalysePage(ctx context.Context, page *model.DownloadedWebpage) (*model.Analysis, error) {
@@ -153,10 +160,6 @@ func (s *analyser) headingDetails(ctx context.Context, content []byte) (map[stri
 	}
 }
 
-func (s *analyser) linksDetail(ctx context.Context, node *html.Node) (any, error) {
-	return nil, nil
-}
-
 // hasLoginForm to detect login form first check to see if there is a <form> element,
 // if <form> element found then it will check for <input type="password"> to make sure
 // that the password is asked, finally check for either <button type="submit">Login</button> or
@@ -192,16 +195,13 @@ func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, erro
 					k, v, m := tt.TagAttr()
 					sk := string(k)
 					sv := string(v)
-
 					if sk == "type" && sv == "password" {
 						hasPasswordInput = true
 						break
 					}
-
 					if sk == "type" && sv == "submit" {
 						isSubmit = true
 					}
-
 					if sk == "value" && sv == "Login" {
 						isLogin = true
 					}
@@ -218,7 +218,6 @@ func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, erro
 					k, v, m := tt.TagAttr()
 					sk := string(k)
 					sv := string(v)
-
 					if sk == "type" && sv == "submit" {
 						possibleLoginButton = true
 						break
@@ -237,7 +236,6 @@ func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, erro
 				if hasLoginButton && hasPasswordInput {
 					return true, nil
 				}
-
 				insideForm = false
 				hasPasswordInput = false
 				hasLoginButton = false
@@ -251,4 +249,110 @@ func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, erro
 			}
 		}
 	}
+}
+
+func (s *analyser) linksDetail(ctx context.Context, hostUrl string, content []byte) ([]*model.Link, error) {
+	links := []*model.Link{}
+	insideLinkTak := false
+	tt := html.NewTokenizer(bytes.NewReader(content))
+	wg := sync.WaitGroup{}
+	for {
+		token := tt.Next()
+		switch token {
+		case html.ErrorToken:
+			err := tt.Err()
+			if errors.Is(err, io.EOF) {
+				wg.Wait()
+				return links, nil
+			}
+
+			return nil, fmt.Errorf("unable to process the document, %v", err)
+		case html.StartTagToken, html.EndTagToken:
+			name, atr := tt.TagName()
+			if string(name) != "a" {
+				continue
+			}
+
+			if !insideLinkTak {
+				links = append(links, &model.Link{})
+			}
+
+			insideLinkTak = !insideLinkTak
+			if !insideLinkTak || !atr {
+				continue
+			}
+
+			for {
+				k, v, m := tt.TagAttr()
+				sk := string(k)
+				sv := string(v)
+				if sk == "href" {
+					links[len(links)-1].Url = sv
+					wg.Add(1)
+					go func(l *model.Link, host, link string) {
+						defer wg.Done()
+						l.IsInternal = s.isInternalLink(hostUrl, sv)
+						status, code := s.linkStatus(hostUrl, sv)
+						l.LinkStatus = status
+						l.HttpStatusCode = code
+					}(links[len(links)-1], hostUrl, sv)
+
+				}
+
+				if !m {
+					break
+				}
+			}
+		case html.TextToken:
+			if insideLinkTak {
+				links[len(links)-1].Name = string(tt.Text())
+			}
+		}
+
+	}
+}
+
+func (s *analyser) isInternalLink(host, link string) bool {
+	hostUrl, err := url.ParseRequestURI(host)
+	if err != nil {
+		logrus.Errorf("unable to parse hostUrl %q, %v", host, err)
+		return false
+	}
+
+	linkUrl, err := url.Parse(link)
+	if err != nil {
+		logrus.Errorf("unable to parse linkUrl %q, %v", link, err)
+		return false
+	}
+
+	if linkUrl.Hostname() == "" ||
+		linkUrl.Hostname() == hostUrl.Hostname() {
+		return true
+	}
+
+	return false
+}
+
+func (s *analyser) linkStatus(host, link string) (model.LinkStatus, int) {
+	linkUrl, err := url.Parse(link)
+	if err != nil {
+		logrus.Errorf("unable to parse linkUrl %q, %v", link, err)
+		return model.LinkStatusInactive, -1
+	}
+
+	getUrl := link
+	if linkUrl.Host == "" {
+		getUrl = fmt.Sprintf("%s/%s", host, link)
+	}
+
+	res, err := s.client.Get(getUrl)
+	if err != nil {
+		return model.LinkStatusInactive, -1
+	}
+
+	if res.StatusCode == http.StatusOK {
+		return model.LinkStatusActive, res.StatusCode
+	}
+
+	return model.LinkStatusInactive, res.StatusCode
 }
