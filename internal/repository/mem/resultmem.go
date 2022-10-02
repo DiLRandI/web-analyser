@@ -25,12 +25,16 @@ func nextId() int64 {
 }
 
 func (r *resultInMem) Save(ctx context.Context, m any) (int64, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	id := nextId()
 	data[id] = m
 	return id, nil
 }
 
 func (r *resultInMem) Remove(ctx context.Context, id int64) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	if _, ok := data[id]; !ok {
 		return fmt.Errorf("Unable to remove the item with id %d, item not found", id)
 	}
@@ -40,6 +44,8 @@ func (r *resultInMem) Remove(ctx context.Context, id int64) error {
 }
 
 func (r *resultInMem) Get(ctx context.Context, id int64) (any, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	if _, ok := data[id]; !ok {
 		return nil, fmt.Errorf("Unable to get the item with id %d, item not found", id)
 	}
@@ -48,6 +54,8 @@ func (r *resultInMem) Get(ctx context.Context, id int64) (any, error) {
 }
 
 func (r *resultInMem) GetAll(ctx context.Context) ([]any, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	results := []any{}
 
 	for _, d := range data {

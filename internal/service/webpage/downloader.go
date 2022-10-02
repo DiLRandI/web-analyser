@@ -9,6 +9,7 @@ import (
 )
 
 type Downloader interface {
+	Download(url string) (*model.DownloadedWebpage, error)
 }
 
 type downloader struct {
@@ -36,6 +37,7 @@ func (s *downloader) Download(url string) (*model.DownloadedWebpage, error) {
 		return &model.DownloadedWebpage{
 			StatusCode: res.StatusCode,
 			Status:     res.Status,
+			Url:        url,
 		}, nil
 	}
 
