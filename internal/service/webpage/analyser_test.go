@@ -58,3 +58,83 @@ func Test_page_version_return_an_error_when_doctype_content_version_is_malformed
 	assert.Empty(t, version)
 	assert.ErrorContains(t, err, fmt.Sprintf("Unable to parse the Doctype node %q", malformedContent))
 }
+
+func Test_page_title_returns_for_valid_title(t *testing.T) {
+	sut := &analyser{}
+	content := `
+	<html lang="en">
+	<head>
+		<title>Test Title</title>
+	</head>
+	<body>
+		
+	</body>
+	</html>`
+	title, err := sut.pageTitle(context.Background(), []byte(content))
+
+	assert.NoError(t, err)
+	assert.Equal(t, title, "Test Title")
+}
+
+func Test_page_title_returns_empty_for_empty_title_node(t *testing.T) {
+	sut := &analyser{}
+	content := `
+	<html lang="en">
+	<head>
+		<title></title>
+	</head>
+	<body>
+		
+	</body>
+	</html>`
+	title, err := sut.pageTitle(context.Background(), []byte(content))
+
+	assert.NoError(t, err)
+	assert.Empty(t, title)
+}
+
+func Test_page_title_returns_error_if_title_node_not_found(t *testing.T) {
+	sut := &analyser{}
+	content := `
+	<html lang="en">
+	<head>
+	</head>
+	<body>
+		
+	</body>
+	</html>`
+	title, err := sut.pageTitle(context.Background(), []byte(content))
+
+	assert.Empty(t, title)
+	assert.ErrorContains(t, err, "title node not found")
+}
+
+func Test_page_title_returns_error_if_title_element_is_not_found_in_head_tag(t *testing.T) {
+	sut := &analyser{}
+	content := `
+	<html lang="en">
+	<head>
+	</head>
+	<body>
+		<title>Invalid title in Body</title>
+	</body>
+	</html>`
+	title, err := sut.pageTitle(context.Background(), []byte(content))
+
+	assert.Empty(t, title)
+	assert.ErrorContains(t, err, "title node not found")
+}
+
+func Test_page_title_returns_error_if_head_element_is_missing_in_the_document(t *testing.T) {
+	sut := &analyser{}
+	content := `
+	<html lang="en">
+	<body>
+		<title>Invalid title in Body</title>
+	</body>
+	</html>`
+	title, err := sut.pageTitle(context.Background(), []byte(content))
+
+	assert.Empty(t, title)
+	assert.ErrorContains(t, err, "head element not found in the document")
+}

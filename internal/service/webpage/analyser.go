@@ -67,8 +67,48 @@ loop:
 	return "", fmt.Errorf("Unable to parse the Doctype node %q", docType)
 }
 
-func (s *analyser) pageTitle(ctx context.Context, node *html.Node) (string, error) {
-	return "", nil
+func (s *analyser) pageTitle(ctx context.Context, content []byte) (string, error) {
+	tt := html.NewTokenizer(bytes.NewReader(content))
+	title := ""
+	foundTitleNode := false
+	foundHeadElement := false
+loop:
+	for {
+		token := tt.Next()
+		switch token {
+		case html.ErrorToken:
+			err := tt.Err()
+			if errors.Is(err, io.EOF) {
+				return "", fmt.Errorf("head element not found in the document")
+			}
+
+			return "", fmt.Errorf("unable to process the document, %v", err)
+
+		case html.StartTagToken:
+			name, _ := tt.TagName()
+			if string(name) == "head" {
+				foundHeadElement = true
+			}
+			if foundHeadElement && string(name) == "title" {
+				foundTitleNode = true
+			}
+		case html.EndTagToken:
+			name, _ := tt.TagName()
+			if string(name) == "head" {
+				break loop
+			}
+		case html.TextToken:
+			if foundTitleNode {
+				title = strings.TrimSpace(string(tt.Text()))
+				break loop
+			}
+		}
+	}
+
+	if !foundTitleNode {
+		return "", fmt.Errorf("title node not found in the document")
+	}
+	return title, nil
 }
 
 func (s *analyser) linksDetail(ctx context.Context, node *html.Node) (any, error) {
