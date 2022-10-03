@@ -25,6 +25,7 @@ func nextId() int64 {
 
 func (r *resultInMem) Save(ctx context.Context, m *dao.Analyses) (int64, error) {
 	id := nextId()
+	m.Id = id
 	data[id] = m
 	return id, nil
 }

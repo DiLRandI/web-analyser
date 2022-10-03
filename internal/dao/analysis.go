@@ -3,7 +3,7 @@ package dao
 import "time"
 
 type Analyses struct {
-	Id                int
+	Id                int64
 	Url               string
 	Requested         time.Time
 	Completed         *time.Time

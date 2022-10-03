@@ -1,15 +1,17 @@
 package webpage
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/DiLRandI/web-analyser/internal/service/webpage/model"
 	"github.com/sirupsen/logrus"
 )
 
 type Downloader interface {
-	Download(url string) (*model.DownloadedWebpage, error)
+	Download(ctx context.Context, url string) (*model.DownloadedWebpage, error)
 }
 
 type downloader struct {
@@ -22,7 +24,7 @@ func NewDownloader(client WebClient) Downloader {
 	}
 }
 
-func (s *downloader) Download(url string) (*model.DownloadedWebpage, error) {
+func (s *downloader) Download(ctx context.Context, url string) (*model.DownloadedWebpage, error) {
 	res, err := s.client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("unable to download the webpage, %v", err)
@@ -33,12 +35,8 @@ func (s *downloader) Download(url string) (*model.DownloadedWebpage, error) {
 		}
 	}()
 
-	if res.StatusCode >= 400 {
-		return &model.DownloadedWebpage{
-			StatusCode: res.StatusCode,
-			Status:     res.Status,
-			Url:        url,
-		}, nil
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("the requested page failed with status %s", res.Status)
 	}
 
 	content, err := io.ReadAll(res.Body)

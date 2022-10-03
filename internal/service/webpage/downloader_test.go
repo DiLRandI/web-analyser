@@ -1,6 +1,7 @@
 package webpage
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -30,14 +31,10 @@ func Test_download(t *testing.T) {
 			mcErr: errors.New("test failure"),
 		},
 		{
-			desc: "Download should return the status and status code only for 4xx and above statuses",
+			desc: "Download should return an error if status is not 200 ok",
 			url:  "http://test.com",
-			err:  nil,
-			res: &model.DownloadedWebpage{
-				StatusCode: http.StatusNotFound,
-				Status:     "404 NOT FOUND",
-				Url:        "http://test.com",
-			},
+			err:  errors.New("the requested page failed with status 404 NOT FOUND"),
+			res:  nil,
 			mcRes: &http.Response{
 				StatusCode: http.StatusNotFound,
 				Status:     "404 NOT FOUND",
@@ -68,7 +65,7 @@ func Test_download(t *testing.T) {
 			mc := new(mc.WebClientMock)
 			mc.On("Get", tc.url).Return(tc.mcRes, tc.mcErr)
 			sut := NewDownloader(mc)
-			res, err := sut.Download(tc.url)
+			res, err := sut.Download(context.Background(), tc.url)
 
 			if tc.err == nil {
 				assert.NoError(t, err)

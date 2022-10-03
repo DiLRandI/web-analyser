@@ -4,15 +4,20 @@ import (
 	"net/http"
 
 	"github.com/DiLRandI/web-analyser/internal/dto"
+	"github.com/DiLRandI/web-analyser/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
 type analysisHandler struct {
+	processor service.Processor
 }
 
-func New() *analysisHandler {
-	return &analysisHandler{}
+func New(processor service.Processor) *analysisHandler {
+	return &analysisHandler{
+		processor: processor,
+	}
 }
 
 func (h *analysisHandler) RegisterRoutes(router *gin.Engine) {
@@ -35,7 +40,13 @@ func (h *analysisHandler) analyse(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusAccepted, &dto.AnalysesResponse{Id: 1})
+	res, err := h.processor.ProcessPage(c, req)
+	if err != nil {
+		logrus.Errorf("error while trying to process the page, %v", err)
+		c.AbortWithStatus(http.StatusInternalServerError)
+	}
+
+	c.JSON(http.StatusAccepted, res)
 }
 
 func (h *analysisHandler) getAnalysis(c *gin.Context) {
