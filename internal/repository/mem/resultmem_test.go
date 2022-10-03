@@ -24,6 +24,40 @@ func Test_save_should_add_item_to_map(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func Test_update_should_update_the_values_in_map(t *testing.T) {
+	t.Cleanup(cleanup)
+	data[1] = &dao.Analyses{
+		Id:    1,
+		Title: "test",
+		Url:   "https://www.test.com",
+	}
+	currentId = 1
+	sut := NewResultInMemory()
+	assert.NotEmpty(t, data)
+
+	updateModel := &dao.Analyses{
+		Id:    1,
+		Title: "test updated",
+		Url:   "https://www.test-updated.com",
+	}
+	err := sut.Update(context.Background(), 1, updateModel)
+
+	assert.NoError(t, err)
+	assert.Equal(t, data[1], updateModel)
+}
+
+func Test_update_should_throw_an_error_for_invalid_id(t *testing.T) {
+	t.Cleanup(cleanup)
+	data[1] = &dao.Analyses{}
+	currentId = 1
+
+	sut := NewResultInMemory()
+	invalidId := int64(2)
+	err := sut.Update(context.Background(), invalidId, &dao.Analyses{})
+
+	assert.ErrorIs(t, err, ResultNotFoundErr)
+}
+
 func Test_save_should_persis_two_consecutive_items(t *testing.T) {
 	t.Cleanup(cleanup)
 	sut := NewResultInMemory()
