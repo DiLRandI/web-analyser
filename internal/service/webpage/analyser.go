@@ -17,6 +17,7 @@ import (
 )
 
 type Analyser interface {
+	AnalysePage(ctx context.Context, page *model.DownloadedWebpage) (*model.Analysis, error)
 }
 
 type analyser struct {
@@ -217,7 +218,7 @@ func (s *analyser) headingDetails(ctx context.Context, content []byte) (map[stri
 // if <form> element found then it will check for <input type="password"> to make sure
 // that the password is asked, finally check for either <button type="submit">Login</button> or
 // <input type="submit" value="Login">
-// Limitation only check for "Login" text to make it simpler,
+// Limitation only check for "Login" "Log in" "Sign in" "SignIn" text to make it simpler,
 func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, error) {
 	insideForm := false
 	hasPasswordInput := false
@@ -236,27 +237,26 @@ func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, erro
 
 			return false, fmt.Errorf("unable to process the document, %v", err)
 
-		case html.StartTagToken:
+		case html.StartTagToken, html.SelfClosingTagToken:
 			name, hasAttr := tt.TagName()
 			if string(name) == "form" {
 				insideForm = true
-				continue
 			} else if insideForm && string(name) == "input" && hasAttr {
-				isSubmit := false
-				isLogin := false
+				inputIsSubmit := false
+				isValueLogin := false
 				for {
 					k, v, m := tt.TagAttr()
-					sk := string(k)
-					sv := string(v)
-					if sk == "type" && sv == "password" {
-						hasPasswordInput = true
+					if hasPassword := inputIsType(k, v, "password"); hasPassword {
+						hasPasswordInput = hasPassword
 						break
 					}
-					if sk == "type" && sv == "submit" {
-						isSubmit = true
+
+					if isSubmit := inputIsType(k, v, "submit"); isSubmit {
+						inputIsSubmit = isSubmit
 					}
-					if sk == "value" && sv == "Login" {
-						isLogin = true
+
+					if string(k) == "value" && isLoginText(string(v)) {
+						isValueLogin = true
 					}
 
 					if !m {
@@ -264,15 +264,16 @@ func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, erro
 					}
 				}
 
-				hasLoginButton = isSubmit && isLogin
+				if !hasLoginButton {
+					hasLoginButton = inputIsSubmit && isValueLogin
+				}
+
 			} else if insideForm && string(name) == "button" && hasAttr {
 				// can be possible login button
 				for {
 					k, v, m := tt.TagAttr()
-					sk := string(k)
-					sv := string(v)
-					if sk == "type" && sv == "submit" {
-						possibleLoginButton = true
+					if isSubmit := inputIsType(k, v, "submit"); isSubmit {
+						possibleLoginButton = isSubmit
 						break
 					}
 
@@ -286,7 +287,7 @@ func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, erro
 			name, _ := tt.TagName()
 			if string(name) == "form" {
 				// is closing form is a login form ?
-				if hasLoginButton && hasPasswordInput {
+				if hasPasswordInput && hasLoginButton {
 					return true, nil
 				}
 				insideForm = false
@@ -298,15 +299,30 @@ func (s *analyser) hasLoginForm(ctx context.Context, content []byte) (bool, erro
 			}
 		case html.TextToken:
 			if possibleLoginButton && !hasLoginButton {
-				hasLoginButton = string(tt.Text()) == "Login"
+				txt := string(tt.Text())
+				hasLoginButton = isLoginText(txt)
 			}
 		}
 	}
 }
 
+func isLoginText(txt string) bool {
+	return strings.EqualFold(txt, "Login") ||
+		strings.EqualFold(txt, "Log In") ||
+		strings.EqualFold(txt, "SignIn") ||
+		strings.EqualFold(txt, "Sign In")
+}
+
+func inputIsType(k, v []byte, typ string) bool {
+	sk := string(k)
+	sv := string(v)
+
+	return sk == "type" && sv == typ
+}
+
 func (s *analyser) linksDetail(ctx context.Context, hostUrl string, content []byte) ([]*model.Link, error) {
 	links := []*model.Link{}
-	insideLinkTak := false
+	insideLinkTag := false
 	tt := html.NewTokenizer(bytes.NewReader(content))
 	wg := sync.WaitGroup{}
 	for {
@@ -320,18 +336,14 @@ func (s *analyser) linksDetail(ctx context.Context, hostUrl string, content []by
 			}
 
 			return nil, fmt.Errorf("unable to process the document, %v", err)
-		case html.StartTagToken, html.EndTagToken:
+		case html.EndTagToken:
+			name, _ := tt.TagName()
+			if string(name) == "a" && insideLinkTag {
+				insideLinkTag = false
+			}
+		case html.StartTagToken:
 			name, atr := tt.TagName()
-			if string(name) != "a" {
-				continue
-			}
-
-			if !insideLinkTak {
-				links = append(links, &model.Link{})
-			}
-
-			insideLinkTak = !insideLinkTak
-			if !insideLinkTak || !atr {
+			if string(name) != "a" || !atr {
 				continue
 			}
 
@@ -339,7 +351,9 @@ func (s *analyser) linksDetail(ctx context.Context, hostUrl string, content []by
 				k, v, m := tt.TagAttr()
 				sk := string(k)
 				sv := string(v)
-				if sk == "href" {
+				if sk == "href" && !insideLinkTag {
+					links = append(links, &model.Link{})
+					insideLinkTag = true
 					links[len(links)-1].Url = sv
 					wg.Add(1)
 					go func(l *model.Link, host, link string) {
@@ -349,7 +363,7 @@ func (s *analyser) linksDetail(ctx context.Context, hostUrl string, content []by
 						l.LinkStatus = status
 						l.HttpStatusCode = code
 					}(links[len(links)-1], hostUrl, sv)
-
+					break
 				}
 
 				if !m {
@@ -357,7 +371,7 @@ func (s *analyser) linksDetail(ctx context.Context, hostUrl string, content []by
 				}
 			}
 		case html.TextToken:
-			if insideLinkTak {
+			if insideLinkTag {
 				links[len(links)-1].Name = string(tt.Text())
 			}
 		}
@@ -387,6 +401,7 @@ func (s *analyser) isInternalLink(host, link string) bool {
 }
 
 func (s *analyser) linkStatus(host, link string) (model.LinkStatus, int) {
+	logrus.Infof("checking for link %q status", link)
 	linkUrl, err := url.Parse(link)
 	if err != nil {
 		logrus.Errorf("unable to parse linkUrl %q, %v", link, err)

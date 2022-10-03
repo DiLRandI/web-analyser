@@ -5,5 +5,5 @@ type AnalysesRequest struct {
 }
 
 type AnalysesResponse struct {
-	Id int `json:"id"`
+	Id int64 `json:"id"`
 }

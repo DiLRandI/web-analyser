@@ -2,5 +2,11 @@ POST http://localhost:8080/analyse
 Accept: application/json
 
 {
-    "webUrl":"http://www.amazon.com"
+    "webUrl":"https://en.wikipedia.org/w/index.php?title=Special:UserLogin&returnto=Main+Page"
 }
+###
+GET http://localhost:8080/analyse
+Accept: application/json
+###
+GET http://localhost:8080/analyse/1
+Accept: application/json

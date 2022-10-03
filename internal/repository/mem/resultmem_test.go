@@ -2,7 +2,6 @@ package mem
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/DiLRandI/web-analyser/internal/dao"
@@ -74,8 +73,7 @@ func Test_remove_should_remove_throw_an_error_for_invalid_id(t *testing.T) {
 	invalidId := int64(2)
 	err := sut.Remove(context.Background(), invalidId)
 
-	assert.ErrorContains(t, err,
-		fmt.Sprintf("Unable to remove the item with id %d, item not found", invalidId))
+	assert.ErrorIs(t, err, ResultNotFoundErr)
 }
 
 func Test_get_should_return_item_on_map(t *testing.T) {
@@ -102,8 +100,7 @@ func Test_get_should_throw_an_error_for_invalid_id(t *testing.T) {
 	sut := NewResultInMemory()
 	result, err := sut.Get(context.Background(), invalidId)
 
-	assert.ErrorContains(t, err,
-		fmt.Sprintf("Unable to get the item with id %d, item not found", invalidId))
+	assert.ErrorIs(t, err, ResultNotFoundErr)
 	assert.Nil(t, result)
 }
 
