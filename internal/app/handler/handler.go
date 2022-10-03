@@ -22,9 +22,10 @@ func New(processor service.Processor) *analysisHandler {
 }
 
 func (h *analysisHandler) RegisterRoutes(router *gin.Engine) {
-	router.POST("/analyse", h.analyse)
-	router.GET("/analyse", h.getAnalysis)
-	router.GET("/analyse/:id", h.getAnalysisById)
+	apiV1 := router.Group("/api/v1/")
+	apiV1.POST("analyse", h.analyse)
+	apiV1.GET("analyse", h.getAnalysis)
+	apiV1.GET("analyse/:id", h.getAnalysisById)
 }
 
 func (h *analysisHandler) analyse(c *gin.Context) {
@@ -42,7 +43,7 @@ func (h *analysisHandler) analyse(c *gin.Context) {
 		return
 	}
 
-	res, err := h.processor.ProcessPage(c, req)
+	res, err := h.processor.ProcessPage(c.Request.Context(), req)
 	if err != nil {
 		logrus.Errorf("error while trying to process the page, %v", err)
 		c.AbortWithStatus(http.StatusInternalServerError)
@@ -67,7 +68,7 @@ func (h *analysisHandler) getAnalysis(c *gin.Context) {
 func (h *analysisHandler) getAnalysisById(c *gin.Context) {
 	paramId := c.Param("id")
 	if paramId == "" {
-		c.AbortWithStatus(http.StatusNotFound)
+		c.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *analysisHandler) getAnalysisById(c *gin.Context) {
 	}
 
 	log.Infof("Retrieving analysed report for id %d", id)
-	res, err := h.processor.GetProcessResultFor(c, id)
+	res, err := h.processor.GetProcessResultFor(c.Request.Context(), id)
 	if err != nil {
 		if notFoundErr, ok := err.(*service.NotFoundError); ok {
 			logrus.Error(notFoundErr)
