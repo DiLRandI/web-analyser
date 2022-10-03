@@ -7,7 +7,3 @@ type AnalysesRequest struct {
 type AnalysesResponse struct {
 	Id int64 `json:"id"`
 }
-
-type ResultRequest struct {
-	Id int64 `json:"id"`
-}

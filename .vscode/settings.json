@@ -17,11 +17,4 @@
             "color": "#ca0000"
         },
     ],
-    "fileHeaderComment.parameter": {
-        "*": {
-            "commentbegin": "// ",
-            "commentprefix": "// ",
-            "commentend": "// ",
-        }
-    }
 }

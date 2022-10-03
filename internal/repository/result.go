@@ -11,4 +11,5 @@ type Results interface {
 	Remove(ctx context.Context, id int64) error
 	Get(ctx context.Context, id int64) (*dao.Analyses, error)
 	GetAll(ctx context.Context) ([]*dao.Analyses, error)
+	Update(context.Context, int64, *dao.Analyses) error
 }

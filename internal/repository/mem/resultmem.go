@@ -2,7 +2,6 @@ package mem
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 
 	"github.com/DiLRandI/web-analyser/internal/dao"
@@ -25,14 +24,27 @@ func nextId() int64 {
 
 func (r *resultInMem) Save(ctx context.Context, m *dao.Analyses) (int64, error) {
 	id := nextId()
-	m.Id = id
-	data[id] = m
+	item := *m
+	item.Id = id
+	data[id] = &item
 	return id, nil
+}
+
+func (r *resultInMem) Update(ctx context.Context, id int64, m *dao.Analyses) error {
+	_, ok := data[id]
+	if !ok {
+		return ResultNotFoundErr
+	}
+
+	item := *m
+	item.Id = id
+	data[id] = &item
+	return nil
 }
 
 func (r *resultInMem) Remove(ctx context.Context, id int64) error {
 	if _, ok := data[id]; !ok {
-		return fmt.Errorf("Unable to remove the item with id %d, item not found", id)
+		return ResultNotFoundErr
 	}
 
 	delete(data, id)
@@ -41,17 +53,18 @@ func (r *resultInMem) Remove(ctx context.Context, id int64) error {
 
 func (r *resultInMem) Get(ctx context.Context, id int64) (*dao.Analyses, error) {
 	if _, ok := data[id]; !ok {
-		return nil, fmt.Errorf("Unable to get the item with id %d, item not found", id)
+		return nil, ResultNotFoundErr
 	}
-
-	return data[id], nil
+	item := *data[id]
+	return &item, nil
 }
 
 func (r *resultInMem) GetAll(ctx context.Context) ([]*dao.Analyses, error) {
 	results := []*dao.Analyses{}
 
 	for _, d := range data {
-		results = append(results, d)
+		item := *d
+		results = append(results, &item)
 	}
 
 	return results, nil
