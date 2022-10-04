@@ -30,6 +30,12 @@ docker run -it -p 8080:80 deleema1/web-analyser
 - When you open the project with vscode it will prompt for instal recommended plugin for project.
 - in **api** folded of the project root you can see sample request file [analyses.http](https://github.com/DiLRandI/web-analyser/blob/main/api/analyses.http) written from [http-client plugin for vs code](https://marketplace.visualstudio.com/items?itemName=humao.rest-client).
 
+## Running the [web client](https://github.com/DiLRandI/web-analyser-client)
+
+- [web-analyser-client](https://github.com/DiLRandI/web-analyser-client) is a Angular project.
+- this also configured with make script, you can simply do `make run` to run the angular application in development mode.
+- by default  [web-analyser-client](https://github.com/DiLRandI/web-analyser-client) assumes **web-analyser** is running on port `8080` if this is not the case you need to configure the [web-analyser-client](https://github.com/DiLRandI/web-analyser-client) project [environment file](https://github.com/DiLRandI/web-analyser-client/blob/main/src/environments/environment.ts) to point correct **web-analyser** port.
+
 ## Improvements to be made
 
 - Instead of using the standard HTTP tokenizer package, use a library like  [Colly](https://github.com/gocolly/colly)
@@ -40,3 +46,5 @@ docker run -it -p 8080:80 deleema1/web-analyser
 - Improve overall logs.
 - Improve concurrency using channel.
 - Make background process more reliable with recovery and retries.
+- web client currently use poling request method to get the latest update. this can be improved to web socket. which allow server to push once the analysis is done.
+- at the moment cors is configured accept request from any origin, and headers event that are not used. this need to be improved to allow only known headers and origin.

@@ -18,11 +18,31 @@ func main() {
 	appPort := getApplicationPort()
 	log.Infof("Starting web-analyser version %s on port %s", Version, appPort)
 	router := gin.Default()
+	router.Use(CORSMiddleware())
+
 	di := initializeDi()
 	registerHandlers(router, di)
 
 	if err := router.Run(fmt.Sprintf(":%s", appPort)); err != nil {
 		log.Fatalf("Unable to start the server on port %s, %v", appPort, err)
+	}
+}
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, "+
+			"Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, "+
+			"X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
 	}
 }
 
